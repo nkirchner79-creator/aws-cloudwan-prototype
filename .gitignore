@@ -1,0 +1,34 @@
+# Terraform — never commit any of these
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terraform.tfstate.lock.info
+
+# AWS credentials — never commit
+.aws/
+*.pem
+*.pub
+awskey
+*credentials*
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Per-user run artifacts
+*.log
+ssh_known_hosts
