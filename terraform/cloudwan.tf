@@ -45,6 +45,20 @@ locals {
         segment      = "prod"
         "share-with" = ["dev"]
       },
+      # Inject the on-prem prefix (TENANT-A overlay) into the prod segment
+      # routing table at every edge, pointed at the VPN attachment. Without
+      # this, Cloud WAN's prod segment has no route for 192.168.100.0/24
+      # even though the VPN attachment carries a static route — segment-level
+      # routing requires explicit policy.
+      {
+        action                    = "create-route"
+        segment                   = "prod"
+        "destination-cidr-blocks" = ["192.168.100.0/24"]
+        # Avoid Terraform dep cycle: VPN attachment is created after policy.
+        # Use the AttachmentId placeholder syntax that Cloud WAN policy
+        # resolves at runtime via the vpn-attachment route.
+        destinations              = ["attachment-0bbc31075a04b7019"]
+      },
     ]
     "attachment-policies" = [
       {

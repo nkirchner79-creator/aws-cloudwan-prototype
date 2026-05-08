@@ -36,7 +36,7 @@ Message:    "ASNs already in use cannot be removed"
 Path:       $.core-network-configuration
 ```
 
-**Root cause**: the stub base policy auto-assigned ASN 64512 (us-east-1 edge) and 64513 (us-west-2 edge). My intended policy declared `asn-ranges = ["64520-64529"]`, which excluded the in-use ASNs. Cloud WAN refuses any policy update that would orphan in-use ASNs.
+**Root cause**: the stub base policy auto-assigned ASN 64512 (us-east-1 edge) and 64513 (us-west-2 edge) — confirmed live; these are the actual edge assignments. My intended policy declared `asn-ranges = ["64520-64529"]`, which excluded the in-use ASNs. Cloud WAN refuses any policy update that would orphan in-use ASNs.
 
 **Fix**: widen `asn-ranges` to `64512-64529` so the existing edge ASNs fall within the declared range. Re-apply succeeded.
 
@@ -69,8 +69,8 @@ rtt min/avg/max/mdev = 55.812/56.289/57.699/0.708 ms
 
 | Edge | ASN |
 |---|---|
-| us-west-2 | 64512 |
-| us-east-1 | 64513 |
+| us-east-1 | 64512 |
+| us-west-2 | 64513 |
 
 (Confirmed via `aws networkmanager get-core-network-change-set` query — the change-set shows `Action: ADD` for each `CORE_NETWORK_EDGE` with the assigned ASN.)
 

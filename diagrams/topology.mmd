@@ -1,11 +1,12 @@
 graph TB
     subgraph Fabric["AWS Cloud WAN — Core Network"]
-        CN["Core Network<br/>policy: prod ⇆ dev allowed<br/>(toggle to deny for isolation demo)"]
+        CN["Core Network<br/>segments: prod, dev<br/>tag-based attachment policy"]
     end
 
     subgraph East["us-east-1 — segment: prod"]
         VPCE["VPC-East<br/>10.10.0.0/16"]
         E1["EC2-East<br/>t3.nano<br/>10.10.1.x"]
+        VPNA["S2S VPN attachment<br/>tag Segment=prod<br/>2 tunnels, static routes"]
         VPCE --- E1
     end
 
@@ -15,14 +16,41 @@ graph TB
         VPCW --- W1
     end
 
+    subgraph Home["on-prem — laptop NAT (WAN 24.42.204.221)"]
+        NAT["home router<br/>outbound NAT only<br/>(no port-forward needed)"]
+        subgraph Clab["containerlab — EVPN fabric"]
+            CPE["cpe-east<br/>alpine + strongswan<br/>mgmt 172.31.10.103<br/>tenant 192.168.100.50/24<br/>auto=start (initiator)"]
+            L1["leaf1<br/>SVI Vlan100<br/>TENANT-A VRF"]
+            SP["spine1 / spine2<br/>EVPN underlay"]
+            L2["leaf2"]
+            H1["h1<br/>192.168.100.101"]
+            CPE -- "eth1<br/>access VLAN 100" --> L1
+            L1 --- SP
+            SP --- L2
+            L2 --- H1
+        end
+        NAT --- CPE
+    end
+
     VPCE -- "VPC attachment<br/>tag Segment=prod" --> CN
     VPCW -- "VPC attachment<br/>tag Segment=dev" --> CN
+    VPNA -- "VPN attachment<br/>tag Segment=prod" --> CN
+    CPE == "IPsec IKEv2 + ESP, NAT-T<br/>initiated outbound by cpe-east<br/>advertises 192.168.100.0/24" ==> VPNA
 
     style Fabric fill:#2a1a3a,stroke:#bc8cff,color:#c9d1d9
     style East fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
     style West fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
+    style Home fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
+    style Clab fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
     style CN fill:#2a1a3a,stroke:#bc8cff,color:#c9d1d9
     style VPCE fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
     style VPCW fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
     style E1 fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
     style W1 fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
+    style VPNA fill:#2a1a3a,stroke:#bc8cff,color:#c9d1d9
+    style NAT fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
+    style CPE fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
+    style L1 fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
+    style L2 fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
+    style SP fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
+    style H1 fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9

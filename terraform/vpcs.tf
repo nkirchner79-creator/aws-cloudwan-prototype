@@ -45,6 +45,23 @@ resource "aws_route" "east_to_west" {
   depends_on             = [aws_networkmanager_vpc_attachment.east]
 }
 
+# Routes to on-prem tenant subnets over Cloud WAN VPN
+resource "aws_route" "east_to_tenant_a" {
+  provider               = aws.east
+  route_table_id         = aws_route_table.east.id
+  destination_cidr_block = "192.168.100.0/24"
+  core_network_arn       = aws_networkmanager_core_network.this.arn
+  depends_on             = [aws_networkmanager_site_to_site_vpn_attachment.cpe_east]
+}
+
+resource "aws_route" "east_to_tenant_b" {
+  provider               = aws.east
+  route_table_id         = aws_route_table.east.id
+  destination_cidr_block = "192.168.200.0/24"
+  core_network_arn       = aws_networkmanager_core_network.this.arn
+  depends_on             = [aws_networkmanager_site_to_site_vpn_attachment.cpe_east]
+}
+
 resource "aws_route_table_association" "east" {
   provider       = aws.east
   subnet_id      = aws_subnet.east.id
