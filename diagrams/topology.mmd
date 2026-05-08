@@ -1,33 +1,35 @@
 graph TB
     subgraph Fabric["AWS Cloud WAN — Core Network"]
-        CN["Core Network<br/>segments: prod, dev<br/>tag-based attachment policy"]
+        CN["Core Network<br/>segments: prod, dev<br/>tag-based attachment policy<br/>edge ASNs 64512 / 64513"]
     end
 
     subgraph East["us-east-1 — segment: prod"]
         VPCE["VPC-East<br/>10.10.0.0/16"]
-        E1["EC2-East<br/>t3.nano<br/>10.10.1.x"]
-        VPNA["S2S VPN attachment<br/>tag Segment=prod<br/>2 tunnels, static routes"]
+        E1["EC2-East<br/>t3.nano<br/>10.10.1.103"]
         VPCE --- E1
     end
 
     subgraph West["us-west-2 — segment: dev"]
         VPCW["VPC-West<br/>10.20.0.0/16"]
         W1["EC2-West<br/>t3.nano<br/>10.20.1.x"]
+        VPNA["S2S VPN attachment<br/>tag Segment=prod<br/>BGP mode, 2 tunnels<br/>IKEv2 pinned"]
         VPCW --- W1
     end
 
-    subgraph Home["on-prem — laptop NAT (WAN 24.42.204.221)"]
-        NAT["home router<br/>outbound NAT only<br/>(no port-forward needed)"]
-        subgraph Clab["containerlab — EVPN fabric"]
-            CPE["cpe-east<br/>alpine + strongswan<br/>mgmt 172.31.10.103<br/>tenant 192.168.100.50/24<br/>auto=start (initiator)"]
-            L1["leaf1<br/>SVI Vlan100<br/>TENANT-A VRF"]
-            SP["spine1 / spine2<br/>EVPN underlay"]
-            L2["leaf2"]
-            H1["h1<br/>192.168.100.101"]
-            CPE -- "eth1<br/>access VLAN 100" --> L1
+    subgraph Home["on-prem — laptop WAN 24.42.204.221"]
+        NAT["home router<br/>outbound NAT<br/>NAT-T encapsulates ESP"]
+        subgraph Clab["containerlab — EVPN/VXLAN fabric"]
+            CPE["cpe-east<br/>alpine + strongSwan + FRR 10.0<br/>eth0 mgmt 172.31.10.103<br/>eth1 192.168.100.50/24 (TENANT-A)<br/>xfrm0 169.254.50.106/30<br/>xfrm1 169.254.243.142/30<br/>BGP AS 65000<br/>⚠ SPOF — single-homed to leaf1"]
+            L1["leaf1<br/>TENANT-A + TENANT-B VRFs<br/>SVI Vlan100 = 192.168.100.1<br/>RT cross-import (transit for TENANT-B)"]
+            SP["spine1 / spine2<br/>eBGP underlay + EVPN overlay"]
+            L2["leaf2<br/>TENANT-B VRF<br/>SVI Vlan200"]
+            H1["h1 (TENANT-A)<br/>192.168.100.101"]
+            H2["h2 (TENANT-B)<br/>192.168.200.101"]
+            CPE -- "eth1<br/>access VLAN 100<br/>(both tenants ride here)" --> L1
             L1 --- SP
             SP --- L2
-            L2 --- H1
+            L1 --- H1
+            L2 --- H2
         end
         NAT --- CPE
     end
@@ -35,7 +37,8 @@ graph TB
     VPCE -- "VPC attachment<br/>tag Segment=prod" --> CN
     VPCW -- "VPC attachment<br/>tag Segment=dev" --> CN
     VPNA -- "VPN attachment<br/>tag Segment=prod" --> CN
-    CPE == "IPsec IKEv2 + ESP, NAT-T<br/>initiated outbound by cpe-east<br/>advertises 192.168.100.0/24" ==> VPNA
+    CPE == "tunnel-1: ESP/UDP 4500 → 34.214.170.247<br/>xfrm0 ↔ 169.254.50.105 (AWS AS 64513)<br/>BGP Established, 2 PfxRcd / 4 PfxSnt" ==> VPNA
+    CPE == "tunnel-2: ESP/UDP 4500 → 100.21.221.32<br/>xfrm1 ↔ 169.254.243.141 (AWS AS 64513)<br/>BGP Established, 2 PfxRcd / 4 PfxSnt" ==> VPNA
 
     style Fabric fill:#2a1a3a,stroke:#bc8cff,color:#c9d1d9
     style East fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
@@ -49,8 +52,9 @@ graph TB
     style W1 fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
     style VPNA fill:#2a1a3a,stroke:#bc8cff,color:#c9d1d9
     style NAT fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
-    style CPE fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
+    style CPE fill:#3a2a1a,stroke:#f0883e,color:#c9d1d9
     style L1 fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
     style L2 fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
     style SP fill:#1a2a3a,stroke:#58a6ff,color:#c9d1d9
     style H1 fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
+    style H2 fill:#1a3a2a,stroke:#3fb950,color:#c9d1d9
