@@ -45,20 +45,12 @@ locals {
         segment      = "prod"
         "share-with" = ["dev"]
       },
-      # Inject the on-prem prefix (TENANT-A overlay) into the prod segment
-      # routing table at every edge, pointed at the VPN attachment. Without
-      # this, Cloud WAN's prod segment has no route for 192.168.100.0/24
-      # even though the VPN attachment carries a static route — segment-level
-      # routing requires explicit policy.
-      {
-        action                    = "create-route"
-        segment                   = "prod"
-        "destination-cidr-blocks" = ["192.168.100.0/24"]
-        # Avoid Terraform dep cycle: VPN attachment is created after policy.
-        # Use the AttachmentId placeholder syntax that Cloud WAN policy
-        # resolves at runtime via the vpn-attachment route.
-        destinations              = ["attachment-0bbc31075a04b7019"]
-      },
+      # NOTE: a `create-route` segment-action is NOT used here. With the VPN
+      # in BGP mode (`static_routes_only = false`), FRR on the customer side
+      # advertises the on-prem prefixes (192.168.100.0/24, 192.168.200.0/24)
+      # dynamically, and AWS propagates those into the Cloud WAN prod
+      # segment routing table automatically. Static `create-route` would be
+      # redundant and would also pin a stale attachment ID across recreates.
     ]
     "attachment-policies" = [
       {

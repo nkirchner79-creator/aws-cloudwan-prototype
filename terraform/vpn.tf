@@ -42,6 +42,12 @@ resource "aws_vpn_connection" "cpe_east" {
   # data-plane forwarding (ECMP across the BGP-learned next-hops).
   static_routes_only = false
 
+  # Pin IKE version on both tunnels. Customer-side strongSwan is
+  # configured for IKEv2 only; without this pin, AWS may attempt IKEv1
+  # on renegotiation, which would silently fail.
+  tunnel1_ike_versions = ["ikev2"]
+  tunnel2_ike_versions = ["ikev2"]
+
   tags = {
     Name    = "${var.project}-cpe-east"
     Segment = "prod"
